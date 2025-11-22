@@ -81,6 +81,59 @@ export function useWebRTC() {
     }
   }, [addLog]);
 
+  const setupDataChannel = useCallback(() => {
+    if (!dataChannel.current) return;
+
+    dataChannel.current.onopen = () => {
+      addLog("Data channel opened!", "success");
+      setIsConnected(true);
+      setConnectionState("connected");
+    };
+
+    dataChannel.current.onclose = () => {
+      addLog("Data channel closed", "warning");
+      setIsConnected(false);
+      setConnectionState("disconnected");
+    };
+
+    dataChannel.current.onerror = (error) => {
+      addLog(`Data channel error: ${error}`, "error");
+    };
+
+    dataChannel.current.onmessage = (event) => {
+      addLog(`Message received: ${event.data}`, "message");
+      setMessages((prev) => [
+        ...prev,
+        { text: event.data, sender: "peer", timestamp: Date.now() },
+      ]);
+    };
+  }, [addLog]);
+
+  const setupPeerConnectionListeners = useCallback(() => {
+    if (!peerConnection.current) return;
+
+    peerConnection.current.onconnectionstatechange = () => {
+      const state = peerConnection.current.connectionState;
+      addLog(`Connection state changed: ${state}`, "info");
+      setConnectionState(state);
+    };
+
+    peerConnection.current.oniceconnectionstatechange = () => {
+      const state = peerConnection.current.iceConnectionState;
+      addLog(`ICE connection state changed: ${state}`, "ice");
+    };
+
+    peerConnection.current.onicegatheringstatechange = () => {
+      const state = peerConnection.current.iceGatheringState;
+      addLog(`ICE gathering state changed: ${state}`, "ice");
+    };
+
+    peerConnection.current.onsignalingstatechange = () => {
+      const state = peerConnection.current.signalingState;
+      addLog(`Signaling state changed: ${state}`, "info");
+    };
+  }, [addLog]);
+
   // Create a new room (caller/offerer)
   const createRoom = useCallback(async () => {
     try {
@@ -280,59 +333,6 @@ export function useWebRTC() {
     },
     [addLog, fetchIceServers, setupDataChannel, setupPeerConnectionListeners]
   );
-
-  const setupDataChannel = useCallback(() => {
-    if (!dataChannel.current) return;
-
-    dataChannel.current.onopen = () => {
-      addLog("Data channel opened!", "success");
-      setIsConnected(true);
-      setConnectionState("connected");
-    };
-
-    dataChannel.current.onclose = () => {
-      addLog("Data channel closed", "warning");
-      setIsConnected(false);
-      setConnectionState("disconnected");
-    };
-
-    dataChannel.current.onerror = (error) => {
-      addLog(`Data channel error: ${error}`, "error");
-    };
-
-    dataChannel.current.onmessage = (event) => {
-      addLog(`Message received: ${event.data}`, "message");
-      setMessages((prev) => [
-        ...prev,
-        { text: event.data, sender: "peer", timestamp: Date.now() },
-      ]);
-    };
-  }, [addLog]);
-
-  const setupPeerConnectionListeners = useCallback(() => {
-    if (!peerConnection.current) return;
-
-    peerConnection.current.onconnectionstatechange = () => {
-      const state = peerConnection.current.connectionState;
-      addLog(`Connection state changed: ${state}`, "info");
-      setConnectionState(state);
-    };
-
-    peerConnection.current.oniceconnectionstatechange = () => {
-      const state = peerConnection.current.iceConnectionState;
-      addLog(`ICE connection state changed: ${state}`, "ice");
-    };
-
-    peerConnection.current.onicegatheringstatechange = () => {
-      const state = peerConnection.current.iceGatheringState;
-      addLog(`ICE gathering state changed: ${state}`, "ice");
-    };
-
-    peerConnection.current.onsignalingstatechange = () => {
-      const state = peerConnection.current.signalingState;
-      addLog(`Signaling state changed: ${state}`, "info");
-    };
-  }, [addLog]);
 
   const sendMessage = useCallback(
     (message) => {
