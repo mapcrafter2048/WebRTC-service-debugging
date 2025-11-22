@@ -12,7 +12,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 
-const STUN_SERVERS = {
+const FALLBACK_STUN_SERVERS = {
   iceServers: [
     { urls: "stun:stun.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
@@ -30,6 +30,7 @@ export function useWebRTC() {
   const peerConnection = useRef(null);
   const dataChannel = useRef(null);
   const unsubscribeRef = useRef(null);
+  const iceServersConfig = useRef(null);
 
   const addLog = useCallback((message, type = "info") => {
     const timestamp = new Date().toLocaleTimeString();
@@ -37,14 +38,63 @@ export function useWebRTC() {
     setLogs((prev) => [...prev, { timestamp, message, type }]);
   }, []);
 
+  // Fetch ICE servers (STUN + TURN) from Cloudflare
+  const fetchIceServers = useCallback(async () => {
+    try {
+      addLog("Fetching ICE servers from Cloudflare...", "info");
+
+      const response = await fetch("/api/ice-servers", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ICE servers: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.iceServers && data.iceServers.length > 0) {
+        addLog(
+          `Received ${data.iceServers.length} ICE servers from Cloudflare`,
+          "success"
+        );
+
+        // Log each server type
+        data.iceServers.forEach((server) => {
+          const serverType = server.urls.includes("turn") ? "TURN" : "STUN";
+          addLog(`  ${serverType}: ${server.urls}`, "ice");
+        });
+
+        iceServersConfig.current = { iceServers: data.iceServers };
+        return iceServersConfig.current;
+      } else {
+        throw new Error("No ICE servers returned");
+      }
+    } catch (error) {
+      addLog(
+        `Failed to fetch Cloudflare ICE servers: ${error.message}`,
+        "warning"
+      );
+      addLog("Falling back to Google STUN servers only", "warning");
+      iceServersConfig.current = FALLBACK_STUN_SERVERS;
+      return iceServersConfig.current;
+    }
+  }, [addLog]);
+
   // Create a new room (caller/offerer)
   const createRoom = useCallback(async () => {
     try {
       addLog("Creating new room...", "info");
 
+      // Fetch ICE servers first
+      const config = await fetchIceServers();
+
       // Create peer connection
-      peerConnection.current = new RTCPeerConnection(STUN_SERVERS);
-      addLog("RTCPeerConnection created", "success");
+      peerConnection.current = new RTCPeerConnection(config);
+      addLog(
+        "RTCPeerConnection created with Cloudflare TURN servers",
+        "success"
+      );
 
       // Create data channel
       dataChannel.current = peerConnection.current.createDataChannel(
@@ -129,7 +179,7 @@ export function useWebRTC() {
       addLog(`Error creating room: ${error.message}`, "error");
       console.error("Create room error:", error);
     }
-  }, [addLog]);
+  }, [addLog, fetchIceServers, setupDataChannel, setupPeerConnectionListeners]);
 
   // Join an existing room (callee/answerer)
   const joinRoom = useCallback(
@@ -148,9 +198,15 @@ export function useWebRTC() {
 
         addLog("Room found, setting up connection...", "success");
 
+        // Fetch ICE servers first
+        const config = await fetchIceServers();
+
         // Create peer connection
-        peerConnection.current = new RTCPeerConnection(STUN_SERVERS);
-        addLog("RTCPeerConnection created", "success");
+        peerConnection.current = new RTCPeerConnection(config);
+        addLog(
+          "RTCPeerConnection created with Cloudflare TURN servers",
+          "success"
+        );
 
         setupPeerConnectionListeners();
 
@@ -222,7 +278,7 @@ export function useWebRTC() {
         console.error("Join room error:", error);
       }
     },
-    [addLog]
+    [addLog, fetchIceServers, setupDataChannel, setupPeerConnectionListeners]
   );
 
   const setupDataChannel = useCallback(() => {
