@@ -10,10 +10,12 @@ export default function Home() {
     messages,
     logs,
     connectionState,
+    latency,
     createRoom,
     joinRoom,
     sendMessage,
     disconnect,
+    measureLatency,
   } = useWebRTC();
 
   const [inputRoomId, setInputRoomId] = useState("");
@@ -99,12 +101,30 @@ export default function Home() {
                 </span>
               </div>
 
-              <button
-                onClick={disconnect}
-                className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 font-medium"
-              >
-                Disconnect
-              </button>
+              {latency !== null && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">Latency:</span>
+                  <span className="px-3 py-1 rounded text-sm font-medium bg-purple-100 text-purple-800">
+                    {latency}ms
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={measureLatency}
+                  disabled={!isConnected}
+                  className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:bg-gray-300 font-medium"
+                >
+                  Measure Latency
+                </button>
+                <button
+                  onClick={disconnect}
+                  className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 font-medium"
+                >
+                  Disconnect
+                </button>
+              </div>
             </div>
           )}
         </div>

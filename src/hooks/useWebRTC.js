@@ -26,11 +26,13 @@ export function useWebRTC() {
   const [messages, setMessages] = useState([]);
   const [logs, setLogs] = useState([]);
   const [connectionState, setConnectionState] = useState("new");
+  const [latency, setLatency] = useState(null);
 
   const peerConnection = useRef(null);
   const dataChannel = useRef(null);
   const unsubscribeRef = useRef(null);
   const iceServersConfig = useRef(null);
+  const pendingPingsRef = useRef(new Map());
 
   const addLog = useCallback((message, type = "info") => {
     const timestamp = new Date().toLocaleTimeString();
@@ -81,6 +83,26 @@ export function useWebRTC() {
     }
   }, [addLog]);
 
+  const measureLatency = useCallback(() => {
+    if (!dataChannel.current || dataChannel.current.readyState !== "open") {
+      addLog("Cannot measure latency: data channel not open", "error");
+      return;
+    }
+
+    const pingId = `${Date.now()}_${Math.random()}`;
+    pendingPingsRef.current.set(pingId, Date.now());
+    dataChannel.current.send(`__PING__:${pingId}`);
+    addLog("Ping sent for latency measurement", "info");
+
+    // Clean up old pings (older than 10 seconds)
+    const now = Date.now();
+    for (const [id, time] of pendingPingsRef.current.entries()) {
+      if (now - time > 10000) {
+        pendingPingsRef.current.delete(id);
+      }
+    }
+  }, [addLog]);
+
   const setupDataChannel = useCallback(() => {
     if (!dataChannel.current) return;
 
@@ -94,6 +116,7 @@ export function useWebRTC() {
       addLog("Data channel closed", "warning");
       setIsConnected(false);
       setConnectionState("disconnected");
+      pendingPingsRef.current.clear();
     };
 
     dataChannel.current.onerror = (error) => {
@@ -101,10 +124,32 @@ export function useWebRTC() {
     };
 
     dataChannel.current.onmessage = (event) => {
-      addLog(`Message received: ${event.data}`, "message");
+      const data = event.data;
+
+      // Check if it's a ping/pong message
+      if (data.startsWith("__PING__:")) {
+        const pingId = data.substring(9);
+        // Send pong back
+        dataChannel.current.send(`__PONG__:${pingId}`);
+        return;
+      } else if (data.startsWith("__PONG__:")) {
+        const pingId = data.substring(9);
+        const sendTime = pendingPingsRef.current.get(pingId);
+        if (sendTime) {
+          const rtt = Date.now() - sendTime;
+          const calculatedLatency = Math.round(rtt / 2);
+          setLatency(calculatedLatency);
+          addLog(`Latency: ${calculatedLatency}ms (RTT: ${rtt}ms)`, "info");
+          pendingPingsRef.current.delete(pingId);
+        }
+        return;
+      }
+
+      // Regular message
+      addLog(`Message received: ${data}`, "message");
       setMessages((prev) => [
         ...prev,
-        { text: event.data, sender: "peer", timestamp: Date.now() },
+        { text: data, sender: "peer", timestamp: Date.now() },
       ]);
     };
   }, [addLog]);
@@ -358,6 +403,9 @@ export function useWebRTC() {
   const disconnect = useCallback(() => {
     addLog("Disconnecting...", "info");
 
+    pendingPingsRef.current.clear();
+    setLatency(null);
+
     if (dataChannel.current) {
       dataChannel.current.close();
       dataChannel.current = null;
@@ -393,9 +441,11 @@ export function useWebRTC() {
     messages,
     logs,
     connectionState,
+    latency,
     createRoom,
     joinRoom,
     sendMessage,
     disconnect,
+    measureLatency,
   };
 }
