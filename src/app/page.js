@@ -40,14 +40,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-gray-50">
+    <div className="min-h-screen p-4 sm:p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-gray-900">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-gray-900">
           WebRTC Data Channel Demo
         </h1>
 
         {/* Connection Controls */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Connection
           </h2>
@@ -57,13 +57,13 @@ export default function Home() {
               <div>
                 <button
                   onClick={handleCreateRoom}
-                  className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium"
+                  className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium"
                 >
                   Create Room
                 </button>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={inputRoomId}
@@ -73,7 +73,7 @@ export default function Home() {
                 />
                 <button
                   onClick={handleJoinRoom}
-                  className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium"
+                  className="w-full sm:w-auto bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium"
                 >
                   Join Room
                 </button>
@@ -110,17 +110,17 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={measureLatency}
                   disabled={!isConnected}
-                  className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:bg-gray-300 font-medium"
+                  className="w-full sm:w-auto bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:bg-gray-300 font-medium"
                 >
                   Measure Latency
                 </button>
                 <button
                   onClick={disconnect}
-                  className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 font-medium"
+                  className="w-full sm:w-auto bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 font-medium"
                 >
                   Disconnect
                 </button>
@@ -131,7 +131,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Messages */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
               Messages
             </h2>
@@ -158,7 +158,10 @@ export default function Home() {
               )}
             </div>
 
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+            <form
+              onSubmit={handleSendMessage}
+              className="flex flex-col sm:flex-row gap-2"
+            >
               <input
                 type="text"
                 value={messageInput}
@@ -170,7 +173,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!isConnected}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 font-medium"
+                className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 font-medium"
               >
                 Send
               </button>
@@ -178,7 +181,7 @@ export default function Home() {
           </div>
 
           {/* Logs */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">Logs</h2>
 
             <div className="h-96 overflow-y-auto border border-gray-200 rounded p-3 bg-black text-green-400 font-mono text-xs">
